@@ -60,7 +60,7 @@ func SubscribeJSON[T any](
 	queueName,
 	key string,
 	simpleQueueType int,
-	handler func(T),
+	handler func(T) string,
 ) error {
     messages, err := ch.Consume(queueName, "", false, false, false, false, nil)
     if err != nil {
@@ -77,10 +77,19 @@ func SubscribeJSON[T any](
             if err != nil {
                 log.Fatalf("Couldn't unmarshal message: %v", err)
             }
-            handler(toGen)
-            err = msg.Ack(false)
-            if err != nil {
-                log.Fatalf("Couldn't acknowledge msg: %v", err)
+            acktype := handler(toGen)
+            switch acktype {
+            case "Ack":
+                err = msg.Ack(false)
+                if err != nil {
+                    log.Fatalf("Couldn't acknowledge msg: %v", err)
+                }
+            case "NackDiscard":
+                err = msg.Nack(false, false)
+                if err != nil {
+                    log.Fatalf("Couldn't acknowledge msg: %v", err)
+                }
+
             }
         }
     }()

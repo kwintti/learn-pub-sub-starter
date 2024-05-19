@@ -71,6 +71,8 @@ func (gs *GameState) CommandMove(words []string) (ArmyMove, error) {
 		unitIDs = append(unitIDs, unitID)
 	}
 
+    movingUnits := []Unit{}
+
 	for _, unitID := range unitIDs {
 		unit, ok := gs.GetUnit(unitID)
 		if !ok {
@@ -78,11 +80,12 @@ func (gs *GameState) CommandMove(words []string) (ArmyMove, error) {
 		}
 		unit.Location = newLocation
 		gs.UpdateUnit(unit)
+        movingUnits = append(movingUnits, unit)
 	}
 
 	mv := ArmyMove{
 		ToLocation: newLocation,
-		Units:      gs.getUnitsSnap(),
+		Units:      movingUnits,
 		Player:     gs.GetPlayerSnap(),
 	}
 	fmt.Printf("Moved %v units to %s\n", len(mv.Units), mv.ToLocation)
