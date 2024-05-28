@@ -4,8 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+    "encoding/gob"
+    "bytes"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+)
+
+const (
+    Ack = "Ack"
+    NackRequeue = "NackRequeue"
+    NackDiscard = "NackDiscard"
 )
 
 func PublishJSON[T any](ch *amqp.Channel, exchange, key string, val T) error {
@@ -18,6 +26,19 @@ func PublishJSON[T any](ch *amqp.Channel, exchange, key string, val T) error {
 
     return ch.PublishWithContext(ctx, exchange, key, false, false, amqp.Publishing{ContentType: "application/json", Body: b})
 
+}
+
+func PublishGob[T any](ch *amqp.Channel, exchange, key string, val T) error {
+    ctx := context.Background()
+    var b bytes.Buffer
+    enc := gob.NewEncoder(&b) 
+    err := enc.Encode(val)
+    if err != nil {
+        log.Println("Couldn't encode value")
+        return err
+    }
+
+    return ch.PublishWithContext(ctx, exchange, key, false, false, amqp.Publishing{ContentType: "application/gob", Body: b.Bytes()})
 }
 
 func DeclareAndBind(
@@ -41,7 +62,7 @@ func DeclareAndBind(
         autoDelete = true
         exclusive = true
     }
-    queue, err := ch.QueueDeclare(queueName, durable, autoDelete, exclusive, false, nil)
+    queue, err := ch.QueueDeclare(queueName, durable, autoDelete, exclusive, false, amqp.Table{"x-dead-letter-exchange": "peril_dlx"})
     if err != nil {
         return nil, amqp.Queue{}, err
     }
@@ -86,6 +107,11 @@ func SubscribeJSON[T any](
                 }
             case "NackDiscard":
                 err = msg.Nack(false, false)
+                if err != nil {
+                    log.Fatalf("Couldn't acknowledge msg: %v", err)
+                }
+            case "NackRequeue":
+                err = msg.Nack(false, true)
                 if err != nil {
                     log.Fatalf("Couldn't acknowledge msg: %v", err)
                 }

@@ -27,7 +27,7 @@ func main() {
     if err != nil {
         log.Fatalf("Couldn't create the channel: %v", err)
     }
-    _, _, err = pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, "game_logs", routing.GameLogSlug, 0)
+    _, _, err = pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogSlug+".*", 0)
     if err != nil {
         log.Fatalf("Couldn't bind game_logs: %v", err)
     }
