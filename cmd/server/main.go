@@ -1,10 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	//"os"
 	//"os/signal"
-    "reflect"
+	"reflect"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
@@ -27,10 +28,11 @@ func main() {
     if err != nil {
         log.Fatalf("Couldn't create the channel: %v", err)
     }
-    _, _, err = pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogSlug+".*", 0)
+    logCh, _, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogSlug+".*", 0)
     if err != nil {
         log.Fatalf("Couldn't bind game_logs: %v", err)
     }
+    pubsub.SubscribeGob(logCh, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogSlug+".*",0, handlerLogs())
 
     err = pubsub.PublishJSON(ch, routing.ExchangePerilDirect, routing.PauseKey, routing.PlayingState{IsPaused: true})
     if err != nil {
@@ -71,4 +73,15 @@ func main() {
     //signal.Notify(signalChan, os.Interrupt)
     //<- signalChan
     //log.Println("Shutting down")
+}
+
+func handlerLogs() func(routing.GameLog) pubsub.Acktype {
+    return func(logGame routing.GameLog) pubsub.Acktype {
+            defer fmt.Print("> ")
+            err := gamelogic.WriteLog(logGame)
+            if err != nil {
+                log.Fatalf("Couldn't write to logfile: %v", err)
+            }
+            return pubsub.Ack
+    }
 }

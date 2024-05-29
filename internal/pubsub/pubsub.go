@@ -126,3 +126,53 @@ func SubscribeJSON[T any](
     return nil
 
 }
+
+func SubscribeGob[T any](
+	ch *amqp.Channel,
+	exchange,
+	queueName,
+	key string,
+	simpleQueueType int,
+	handler func(T) Acktype,
+) error {
+    messages, err := ch.Consume(queueName, "", false, false, false, false, nil)
+    if err != nil {
+        log.Fatalf("Couldn't consume: %v", err)
+        return err
+    }
+    
+    go func() { 
+
+        var toGen T
+
+        for msg := range messages {
+            buff := bytes.NewBuffer(msg.Body)
+            dec := gob.NewDecoder(buff)
+            err := dec.Decode(&toGen)
+            if err != nil {
+                log.Fatalf("Couldn't unmarshal message: %v", err)
+            }
+            switch handler(toGen) {
+            case Ack:
+                err = msg.Ack(false)
+                if err != nil {
+                    log.Fatalf("Couldn't acknowledge msg: %v", err)
+                }
+            case NackDiscard:
+                err = msg.Nack(false, false)
+                if err != nil {
+                    log.Fatalf("Couldn't acknowledge msg: %v", err)
+                }
+            case NackRequeue:
+                err = msg.Nack(false, true)
+                if err != nil {
+                    log.Fatalf("Couldn't acknowledge msg: %v", err)
+                }
+
+            }
+        }
+    }()
+
+    return nil
+
+}
