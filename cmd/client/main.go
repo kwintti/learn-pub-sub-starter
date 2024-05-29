@@ -93,16 +93,16 @@ func main() {
 
 }
 
-func handlerPause(gs *gamelogic.GameState) func(routing.PlayingState) string {
-    return func(state routing.PlayingState) string {
+func handlerPause(gs *gamelogic.GameState) func(routing.PlayingState) pubsub.Acktype {
+    return func(state routing.PlayingState) pubsub.Acktype {
         defer fmt.Print("> ")
         gs.HandlePause(state)
-        return "Ack" 
+        return pubsub.Ack 
     }
 }
 
-func handlerMove(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.ArmyMove) string{
-    return func(move gamelogic.ArmyMove) string{
+func handlerMove(gs *gamelogic.GameState, ch *amqp.Channel) func(gamelogic.ArmyMove) pubsub.Acktype{
+    return func(move gamelogic.ArmyMove) pubsub.Acktype{
         defer fmt.Print("> ")
         outcome := gs.HandleMove(move)
         if outcome == gamelogic.MoveOutcomeMakeWar {

@@ -10,10 +10,14 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+type Acktype int
+
+
 const (
-    Ack = "Ack"
-    NackRequeue = "NackRequeue"
-    NackDiscard = "NackDiscard"
+    Ack Acktype = iota
+    NackRequeue 
+    NackDiscard
+    
 )
 
 func PublishJSON[T any](ch *amqp.Channel, exchange, key string, val T) error {
@@ -81,7 +85,7 @@ func SubscribeJSON[T any](
 	queueName,
 	key string,
 	simpleQueueType int,
-	handler func(T) string,
+	handler func(T) Acktype,
 ) error {
     messages, err := ch.Consume(queueName, "", false, false, false, false, nil)
     if err != nil {
@@ -98,19 +102,18 @@ func SubscribeJSON[T any](
             if err != nil {
                 log.Fatalf("Couldn't unmarshal message: %v", err)
             }
-            acktype := handler(toGen)
-            switch acktype {
-            case "Ack":
+            switch handler(toGen) {
+            case Ack:
                 err = msg.Ack(false)
                 if err != nil {
                     log.Fatalf("Couldn't acknowledge msg: %v", err)
                 }
-            case "NackDiscard":
+            case NackDiscard:
                 err = msg.Nack(false, false)
                 if err != nil {
                     log.Fatalf("Couldn't acknowledge msg: %v", err)
                 }
-            case "NackRequeue":
+            case NackRequeue:
                 err = msg.Nack(false, true)
                 if err != nil {
                     log.Fatalf("Couldn't acknowledge msg: %v", err)
