@@ -135,6 +135,10 @@ func SubscribeGob[T any](
 	simpleQueueType int,
 	handler func(T) Acktype,
 ) error {
+    err := ch.Qos(10, 0, false)
+    if err != nil {
+        log.Fatalf("Couldn't set prefetch: %v", err)
+    }
     messages, err := ch.Consume(queueName, "", false, false, false, false, nil)
     if err != nil {
         log.Fatalf("Couldn't consume: %v", err)

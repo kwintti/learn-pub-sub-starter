@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
@@ -56,6 +57,11 @@ func main() {
     if err != nil {
         log.Fatalf("Couldn't subscribe: %v", err)
     }
+
+    chSpam, err := conn.Channel()
+    if err != nil {
+        log.Fatalf("Couldn't connect to spam channel: %v", err)
+    }
     
 
     for {
@@ -81,7 +87,16 @@ func main() {
         case "help":
             gamelogic.PrintClientHelp()
         case "spam":
-            log.Println("Spamming not allowed yet!") 
+            n, err := strconv.Atoi(input[1])
+            if err != nil {
+                log.Fatalf("Couldn't parse number: %v", err)
+            }
+            for i := 0; i < n; i++ {
+                spamMsg := gamelogic.GetMaliciousLog()
+                pubsub.PublishGob(chSpam, routing.ExchangePerilTopic, routing.GameLogSlug+"."+username, 
+                routing.GameLog{CurrentTime: time.Now(), Message: spamMsg, Username: username})
+                
+            }
         case "quit":
             gamelogic.PrintQuit()
             return
@@ -158,10 +173,10 @@ func handlerWar(gs *gamelogic.GameState, conn *amqp.Connection) {
                     msg.Nack(false, false)
                 case gamelogic.WarOutcomeOpponentWon:
                     msg.Ack(true)
-                    message = winner + "won a war agains" + loser
+                    message = winner + " won a war agains " + loser
                 case gamelogic.WarOutcomeYouWon:
                     msg.Ack(true)
-                    message = winner + "won a war agains" + loser
+                    message = winner + " won a war agains " + loser
                 case gamelogic.WarOutcomeDraw:
                     msg.Ack(true)
                     message = "A war between " + winner + " and " + loser + "resulted in a draw" 
